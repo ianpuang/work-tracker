@@ -37,7 +37,8 @@ spreadsheet). Three tabs:
   `d/m/yyyy`, but Sheets' date auto-formatting is a classic gotcha — if tasks
   don't show up for a day, check what column A actually displays.
 - One row per tech-assignment: a job with 4 techs = 4 rows, same Site/Task
-  (copy-paste keeps the strings identical, which is how the board groups them).
+  (copy-paste keeps the strings identical, which is how the board groups them
+  and how the script finds the crew when one tech marks Done).
 - Blank Status = pending. On the board, pending is shown amber and treated as
   "not updated" — that's the enforcement mechanism ("no update = not done").
 - Monthly housekeeping: delete (or move) old `tasks` rows to keep the published
@@ -59,7 +60,11 @@ spreadsheet). Three tabs:
    JSON response is still readable). The script verifies the tech name on that
    row before writing (guard against stale row numbers after an exec edit),
    updates the row, and appends to `log`. On `row mismatch` the app tells the
-   tech to retry and re-fetches.
+   tech to retry and re-fetches. **Done is job-level:** a `done` update also
+   completes every other `tasks` row with the same date + site + task (one
+   tech's Done speaks for the whole crew); those rows are logged with note
+   `auto: done via <tech>`. Not done stays individual — each tech reports
+   their own reason.
 3. Views: hash-routed. Tech view = today only (device local date), remembers the
    picked name in `localStorage` (`wt-tech`). Board adds Prev/Next day arrows so
    the exec can check tomorrow's entries. Kiosk = today, big type, problems
@@ -104,6 +109,9 @@ Live at `https://<user>.github.io/work-tracker/` a minute or two after Pages is 
   carry-over.
 - No login/PIN — name-pick is trust-based; mistakes are corrected by re-tapping
   or by editing the Sheet directly. The Sheet is the admin UI.
+- "Done" is a statement about the job, not the person: one tech's Done
+  completes all rows of that job (the script does the fan-out; sheet edits
+  made by hand don't fan out). "Not done" stays personal.
 - Tech view shows today only; pending (no update by evening) is displayed
   prominently and treated as not done.
 - Single `tasks` tab + monthly manual archive; no month-tab auto-detection

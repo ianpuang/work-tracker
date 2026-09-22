@@ -75,6 +75,7 @@
   .taskCard{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px}
   .taskCard .site{font-weight:600; font-size:16px}
   .taskCard .desc{color:var(--muted); font-size:14px; margin-top:2px}
+  .taskCard .mates{color:var(--faint); font-size:12.5px; margin-top:6px}
   .taskCard .actions{display:flex; gap:10px; margin-top:12px}
   .bigBtn{
     flex:1; font:inherit; font-size:17px; font-weight:600; padding:13px 0; border-radius:10px;
@@ -393,15 +394,24 @@ async function postStatus(task, status, reason, note){
 async function submit(task, status, reason, note){
   if (state.saving) return;
   state.saving = true;
-  state.overrides[task.row] = { status, reason, note };
-  Object.assign(task, { status, reason, note });
+  /* "done" is job-level: the script marks every row of the same job (same
+     date+site+task) — mirror that here so this device shows it instantly. */
+  const batch = status === "done"
+    ? state.tasks.filter(t => t.date === task.date && t.site === task.site && t.task === task.task)
+    : [task];
+  for (const t of batch){
+    state.overrides[t.row] = { status, reason, note };
+    Object.assign(t, { status, reason, note });
+  }
   state.composing = false;
   render();
   try {
     await postStatus(task, status, reason, note);
   } catch (e) {
-    delete state.overrides[task.row];
-    task.status = ""; task.reason = ""; task.note = "";
+    for (const t of batch){
+      delete state.overrides[t.row];
+      t.status = ""; t.reason = ""; t.note = "";
+    }
     render();
     if (e.message === "mismatch"){
       alert("This task was just changed in the sheet. Reloading the latest list — please tap again.");
@@ -458,7 +468,7 @@ function renderTech(){
       <div class="nm">${esc(state.me)}</div>
       <button class="linkBtn" id="changeName">Not you? Change name</button>
     </div>
-    ${mine.length ? mine.map(taskCard).join("") : `<div class="card empty">No tasks assigned today (${esc(dateLabel(today))}).</div>`}
+    ${mine.length ? mine.map((t, i) => taskCard(t, i, teamMates(t))).join("") : `<div class="card empty">No tasks assigned today (${esc(dateLabel(today))}).</div>`}
   `;
   $("changeName").addEventListener("click", () => { state.me = ""; localStorage.removeItem("wt-tech"); renderTech(); });
   wireTaskCards(app, mine);
@@ -467,7 +477,14 @@ function inpFocus(){
   const inp = $("nameSearch");
   if (inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
 }
-function taskCard(t, i){
+/* Other techs assigned to the same job (one row per tech, same date+site+task). */
+function teamMates(t){
+  return [...new Set(state.tasks
+    .filter(x => x.row !== t.row && x.tech !== t.tech &&
+                 x.date === t.date && x.site === t.site && x.task === t.task)
+    .map(x => x.tech))];
+}
+function taskCard(t, i, mates){
   const answered = t.status === "done" || t.status === "not done";
   let body;
   if (answered){
@@ -499,6 +516,7 @@ function taskCard(t, i){
     <div class="taskCard" data-row="${t.row}">
       <div class="site">${esc(t.site)}</div>
       <div class="desc">${esc(t.task)}</div>
+      ${mates && mates.length ? `<div class="mates">Shared with ${esc(mates.join(", "))} — one Done completes it for everyone</div>` : ""}
       ${body}
     </div>`;
 }
