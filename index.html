@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Work Tracker</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --card:#ffffff; --ink:#1a1a18; --muted:#6d6c66; --faint:#96958e;
+    --line:#e4e3dd; --line-strong:#cfcec7;
+    --bar:#2a78d6;
+    --ok-bg:#e7f4e7; --ok-ink:#256d25; --ok-dot:#2f9e2f;
+    --warn-bg:#faeeda; --warn-ink:#854f0b;
+    --bad-bg:#fbe7e7; --bad-ink:#a32525; --bad-dot:#d43a3a;
+    --done-btn:#2f9e2f; --done-btn-dark:#278122;
+    --nd-btn:#d43a3a; --nd-btn-dark:#b02c2c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a3a29a; --faint:#7d7c75;
+      --line:#33332f; --line-strong:#4a4944;
+      --bar:#4a90e2;
+      --ok-bg:#1d3320; --ok-ink:#8fd08f; --ok-dot:#4caf50;
+      --warn-bg:#3a2c14; --warn-ink:#f0c070;
+      --bad-bg:#3a1c1c; --bad-ink:#f09090; --bad-dot:#e05c5c;
+      --done-btn:#2c7a2c; --done-btn-dark:#359935;
+      --nd-btn:#a32e2e; --nd-btn-dark:#c23a3a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:20px 16px 40px;
+  }
+  .wrap{max-width:760px; margin:0 auto}
+  header{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px}
+  h1{font-size:21px; font-weight:600; margin:0}
+  .sub{font-size:13px; color:var(--muted); margin-top:3px}
+  .hright{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .pill{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; padding:5px 12px; border-radius:999px; background:var(--ok-bg); color:var(--ok-ink); white-space:nowrap}
+  .pill .dot{width:8px; height:8px; border-radius:50%; background:var(--ok-dot)}
+  .pill.warn{background:var(--warn-bg); color:var(--warn-ink)}
+  .pill.warn .dot{background:var(--warn-ink)}
+  nav{display:flex; gap:6px; margin-bottom:16px; font-size:14px}
+  nav a{
+    color:var(--muted); text-decoration:none; padding:5px 14px; border-radius:999px;
+    border:1px solid var(--line-strong);
+  }
+  nav a.active{background:var(--bar); border-color:var(--bar); color:#fff}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:14px}
+  footer{font-size:12px; color:var(--faint); text-align:center; margin-top:10px; line-height:1.7}
+  .hidden{display:none}
+  #loadMsg{text-align:center; color:var(--muted); padding:30px 0; font-size:14px}
+
+  /* ---------- tech picker ---------- */
+  .search{
+    width:100%; font:inherit; font-size:16px; padding:10px 14px; border-radius:10px;
+    border:1px solid var(--line-strong); background:var(--card); color:var(--ink);
+  }
+  .nameGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:12px}
+  .nameBtn{
+    font:inherit; font-size:15px; padding:10px 8px; border-radius:10px; cursor:pointer; text-align:center;
+    border:1px solid var(--line-strong); background:var(--card); color:var(--ink);
+  }
+  .nameBtn:hover{border-color:var(--bar); color:var(--bar)}
+  .whoBar{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+  .whoBar .nm{font-size:17px; font-weight:600}
+  .linkBtn{
+    font:inherit; font-size:13px; background:none; border:0; cursor:pointer;
+    color:var(--bar); padding:4px 2px; text-decoration:underline;
+  }
+
+  /* ---------- task cards ---------- */
+  .taskCard{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px}
+  .taskCard .site{font-weight:600; font-size:16px}
+  .taskCard .desc{color:var(--muted); font-size:14px; margin-top:2px}
+  .taskCard .actions{display:flex; gap:10px; margin-top:12px}
+  .bigBtn{
+    flex:1; font:inherit; font-size:17px; font-weight:600; padding:13px 0; border-radius:10px;
+    border:0; cursor:pointer; color:#fff;
+  }
+  .btnDone{background:var(--done-btn)}
+  .btnDone:hover{background:var(--done-btn-dark)}
+  .btnND{background:var(--nd-btn)}
+  .btnND:hover{background:var(--nd-btn-dark)}
+  .reasonRow{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+  .reasonBtn{
+    font:inherit; font-size:14px; padding:8px 14px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--line-strong); background:transparent; color:var(--ink);
+  }
+  .reasonBtn[aria-pressed="true"]{background:var(--nd-btn); border-color:var(--nd-btn); color:#fff}
+  .noteIn{
+    width:100%; font:inherit; font-size:14px; padding:8px 12px; margin-top:10px; border-radius:8px;
+    border:1px solid var(--line-strong); background:var(--bg); color:var(--ink);
+  }
+  .confirmRow{display:flex; gap:10px; margin-top:12px}
+  .confirmRow .bigBtn{flex:2}
+  .cancelBtn{
+    flex:1; font:inherit; font-size:15px; padding:13px 0; border-radius:10px; cursor:pointer;
+    border:1px solid var(--line-strong); background:transparent; color:var(--muted);
+  }
+  .stBadge{
+    display:inline-flex; align-items:center; gap:8px; font-size:15px; font-weight:600;
+    padding:8px 14px; border-radius:10px;
+  }
+  .stBadge.done{background:var(--ok-bg); color:var(--ok-ink)}
+  .stBadge.nd{background:var(--bad-bg); color:var(--bad-ink)}
+  .stLine{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .stReason{font-weight:400; font-size:13.5px; opacity:.85}
+  .err{font-size:13px; color:var(--bad-ink); margin-top:8px}
+  .empty{text-align:center; color:var(--muted); padding:24px 0; font-size:15px}
+
+  /* ---------- board / kiosk ---------- */
+  .sumBar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+  .sumChip{font-size:13.5px; font-weight:600; padding:6px 14px; border-radius:999px; border:1px solid var(--line-strong); cursor:pointer; background:var(--card); color:var(--muted)}
+  .sumChip.active{outline:2px solid var(--bar)}
+  .sumChip.c-done{background:var(--ok-bg); color:var(--ok-ink); border-color:transparent}
+  .sumChip.c-pend{background:var(--warn-bg); color:var(--warn-ink); border-color:transparent}
+  .sumChip.c-nd{background:var(--bad-bg); color:var(--bad-ink); border-color:transparent}
+  .dayNav{display:flex; align-items:center; gap:10px; margin-bottom:12px}
+  .dayNav button{
+    font:inherit; font-size:15px; padding:6px 16px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--line-strong); background:var(--card); color:var(--ink);
+  }
+  .dayNav .dlabel{font-weight:600; font-size:15px; min-width:170px; text-align:center}
+  .jobCard{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:10px}
+  .jobCard.problem{border-left:4px solid var(--bad-dot)}
+  .jobCard .jsite{font-weight:600; font-size:15px}
+  .jobCard .jdesc{color:var(--muted); font-size:13.5px}
+  .chipRow{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+  .tchip{
+    font-size:13.5px; padding:6px 12px; border-radius:8px; line-height:1.35; max-width:100%;
+  }
+  .tchip .rsn{display:block; font-size:12px; font-weight:400; opacity:.85}
+  .tchip.done{background:var(--ok-bg); color:var(--ok-ink)}
+  .tchip.pend{background:var(--warn-bg); color:var(--warn-ink)}
+  .tchip.nd{background:var(--bad-bg); color:var(--bad-ink); font-weight:600}
+
+  /* ---------- kiosk ---------- */
+  body.kiosk{padding:28px 32px}
+  body.kiosk .wrap{max-width:1200px}
+  body.kiosk header, body.kiosk nav, body.kiosk footer{display:none}
+  body.kiosk .kHead{display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px}
+  .kHead h1{font-size:34px}
+  .kHead .kclock{font-size:26px; color:var(--muted); font-variant-numeric:tabular-nums}
+  body.kiosk .sumChip{font-size:19px; padding:10px 22px; cursor:default}
+  body.kiosk .jobCard{padding:16px 22px; margin-bottom:14px}
+  body.kiosk .jobCard .jsite{font-size:21px}
+  body.kiosk .jobCard .jdesc{font-size:17px}
+  body.kiosk .tchip{font-size:18px; padding:10px 18px}
+  body.kiosk .tchip .rsn{font-size:15px}
+  body.kiosk .kStatus{font-size:15px; color:var(--faint); margin-top:6px}
+  .kOnly{display:none}
+  body.kiosk .kOnly{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="pageTitle">Work tracker</h1>
+      <div class="sub" id="pageSub">End-of-day updates — tap your name, tap done.</div>
+    </div>
+    <div class="hright">
+      <span class="pill" id="status"><span class="dot"></span><span id="statusText">Loading…</span></span>
+    </div>
+  </header>
+
+  <nav id="topNav">
+    <a href="#/" data-route="tech">Update</a>
+    <a href="#/board" data-route="board">Board</a>
+    <a href="#/kiosk" data-route="kiosk">Kiosk</a>
+  </nav>
+
+  <div id="loadMsg">Loading…</div>
+  <div id="app" class="hidden"></div>
+
+  <div class="kOnly">
+    <div class="kHead">
+      <h1 id="kTitle">Work tracker — today</h1>
+      <div class="kclock" id="kClock"></div>
+    </div>
+    <div id="kApp"></div>
+    <div class="kStatus" id="kStatus"></div>
+  </div>
+
+  <footer>
+    Updates save to a Google Sheet · sheet edits appear here within ~5 minutes (Google republish delay)
+    <span id="demoBadge" class="hidden"> · <b>DEMO MODE</b> — sample data, nothing is saved</span>
+  </footer>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+const PUB_KEY = "2PACX-1vTlqr8oaNbWeuLiXZih0WSxOWqNIIvzeaZLhu5RvoEeiuep5FFXWyw3Z88zhSP1tQb_Nu2JiDg5-AY3";  /* published-sheet key */
+const EXEC_URL = "https://script.google.com/macros/s/AKfycbyb8WxmHjkSB7DIhMlwcHcpDm7xS5lT-RLOR51gLwAwS2gRbpM1OS0jEEHTIx5bIb3fYA/exec";  /* Apps Script /exec URL */
+const TASKS_GID = "0";     /* fallback gid of the `tasks` tab if auto-detection fails */
+const TECHS_GID = "";      /* fallback gid of the `techs` tab (leave "" if unknown) */
+const REFRESH_SECONDS = 60;
+const REASONS = ["Waiting parts", "No access", "Need more time", "Other"];
+/* ================================ */
+
+const BASE = "https://docs.google.com/spreadsheets/d/e/" + PUB_KEY;
+const DEMO = new URLSearchParams(location.search).get("demo") === "1";
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  view: "tech",            /* tech | board | kiosk */
+  techs: [],               /* [name] */
+  tasks: [],               /* [{row, date, tech, site, task, status, reason, note}] */
+  overrides: {},           /* row -> {status, reason, note} until CSV confirms */
+  me: localStorage.getItem("wt-tech") || "",
+  boardOffset: 0,          /* days from today shown on the board */
+  filter: "all",           /* all | problems | pending | done */
+  tabs: null,              /* lowercase tab name -> gid */
+  lastGood: null,
+  composing: false,        /* a reason picker is open — don't yank it on refresh */
+  saving: false,
+};
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function pad(n){ return String(n).length < 2 ? "0" + n : "" + n; }
+function parseCSV(text){
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else {
+      if (c === '"') q = true;
+      else if (c === ",") { row.push(cur); cur = ""; }
+      else if (c === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+      else if (c !== "\r") cur += c;
+    }
+  }
+  row.push(cur);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows;
+}
+function dateStr(offset){
+  const d = new Date();
+  d.setDate(d.getDate() + (offset || 0));
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+/* Accepts 2026-09-22 or 22/9/2026 (also with dashes); anything else won't match. */
+function normDate(s){
+  s = String(s || "").trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + "-" + pad(m[2]) + "-" + pad(m[3]);
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return m[3] + "-" + pad(m[2]) + "-" + pad(m[1]);
+  return s;
+}
+function dateLabel(iso){
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date();
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+function setStatus(ok, text){
+  $("status").classList.toggle("warn", !ok);
+  $("statusText").textContent = text;
+  $("kStatus").textContent = text;
+}
+
+/* ---------- demo data ---------- */
+function loadDemo(){
+  const t = dateStr(0), tm = dateStr(1);
+  state.techs = ["Ahmad Faizal","Alex Wong","Amirul Hakim","Arul Selvam","Azlan Shah","Bala Krishnan","Calvin Tan","Daniel Raj","David Lim","Farid Kamal","Hafiz Rahman","Jason Teh","Kumar Velu","Lee Wei Ming","Ahmad Faizal","Alex Wong","Amirul Hakim","Arul Selvam","Azlan Shah","Bala Krishnan","Calvin Tan","Daniel Raj","David Lim","Farid Kamal","Hafiz Rahman","Jason Teh","Kumar Velu","Lee Wei Ming","Ahmad Faizal 2","Alex Wong 2","Amirul Hakim 2","Arul Selvam 2","Azlan Shah 2","Bala Krishnan 2","Calvin Tan 2","Daniel Raj 2","David Lim 2","Farid Kamal 2","Hafiz Rahman 2","Jason Teh 2","Kumar Velu 2","Lee Wei Ming 2","Ahmad F 3","Alex W 3","Amirul H 3","Arul S 3","Azlan S 3","Bala K 3","Calvin T 3","Daniel R 3"]
+    .filter((v, i, a) => a.indexOf(v) === i);
+  state.tasks = [
+    { row: 2, date: t, tech: state.techs[0], site: "Menara UOA, KL", task: "AHU-3 belt replacement", status: "", reason: "", note: "" },
+    { row: 3, date: t, tech: state.techs[1], site: "Menara UOA, KL", task: "AHU-3 belt replacement", status: "", reason: "", note: "" },
+    { row: 4, date: t, tech: state.techs[0], site: "Wisma Goldhill", task: "Pump P-2 vibration check", status: "", reason: "", note: "" },
+    { row: 5, date: t, tech: state.techs[2], site: "Plaza Sentral", task: "FCU filter change, L12–L15", status: "done", reason: "", note: "" },
+    { row: 6, date: t, tech: state.techs[3], site: "Plaza Sentral", task: "FCU filter change, L12–L15", status: "", reason: "", note: "" },
+    { row: 7, date: t, tech: state.techs[4], site: "Sunway Pyramid", task: "Chiller No.1 oil top-up", status: "not done", reason: "Waiting parts", note: "Oil arriving Thursday" },
+    { row: 8, date: t, tech: state.techs[5], site: "Sunway Pyramid", task: "Chiller No.1 oil top-up", status: "not done", reason: "Waiting parts", note: "" },
+    { row: 9, date: t, tech: state.techs[6], site: "KL Gateway", task: "Lift lobby sensor fault", status: "", reason: "", note: "" },
+    { row: 10, date: tm, tech: state.techs[0], site: "Menara UOA, KL", task: "Cooling tower descale", status: "", reason: "", note: "" },
+    { row: 11, date: tm, tech: state.techs[2], site: "Plaza Sentral", task: "Fire pump test", status: "", reason: "", note: "" },
+  ];
+  state.lastGood = new Date();
+  setStatus(true, "Demo data");
+  $("demoBadge").classList.remove("hidden");
+  $("loadMsg").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  render();
+}
+
+/* ---------- live data ---------- */
+async function ensureTabs(){
+  if (state.tabs) return;
+  state.tabs = {};
+  try {
+    const res = await fetch(BASE + "/pubhtml", { cache: "no-store" });
+    if (!res.ok) throw new Error("pubhtml " + res.status);
+    const html = await res.text();
+    let m;
+    const reNew = /items\.push\(\{name:\s*"([^"]+)"\s*,\s*pageUrl:\s*"[^"]*[?&]gid=(\d+)/g;
+    while ((m = reNew.exec(html)) !== null) state.tabs[m[1].trim().toLowerCase()] = m[2];
+    if (!Object.keys(state.tabs).length){
+      const reOld = /sheet-button-(\d+)[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
+      while ((m = reOld.exec(html)) !== null) state.tabs[m[2].trim().toLowerCase()] = m[1];
+    }
+  } catch (e) {
+    console.warn("Tab auto-detection unavailable, using fallback gids.", e);
+  }
+}
+async function fetchCSV(gid){
+  const res = await fetch(BASE + "/pub?gid=" + gid + "&single=true&output=csv&_cb=" + Date.now(), { cache: "no-store" });
+  if (!res.ok) throw new Error("csv " + res.status);
+  return parseCSV(await res.text());
+}
+async function loadLive(){
+  await ensureTabs();
+  const tasksGid = state.tabs["tasks"] || TASKS_GID;
+  const techsGid = state.tabs["techs"] || TECHS_GID;
+
+  const taskRows = await fetchCSV(tasksGid);
+  const tasks = [];
+  for (let i = 1; i < taskRows.length; i++){        /* row 1 = header */
+    const r = taskRows[i];
+    const tech = (r[1] || "").trim();
+    if (!tech || !String(r[0] || "").trim()) continue;
+    tasks.push({
+      row: i + 1,                                    /* sheet row number (1-based) */
+      date: normDate(r[0]),
+      tech,
+      site: (r[2] || "").trim(),
+      task: (r[3] || "").trim(),
+      status: (r[4] || "").trim().toLowerCase(),
+      reason: (r[5] || "").trim(),
+      note: (r[6] || "").trim(),
+    });
+  }
+  /* drop overrides the sheet has caught up with */
+  for (const t of tasks){
+    const o = state.overrides[t.row];
+    if (o && t.status === o.status && t.reason === o.reason) delete state.overrides[t.row];
+  }
+  state.tasks = tasks.map(t => state.overrides[t.row] ? Object.assign(t, state.overrides[t.row]) : t);
+
+  if (techsGid){
+    const techRows = await fetchCSV(techsGid);
+    state.techs = techRows.slice(1).map(r => (r[0] || "").trim()).filter(Boolean);
+  } else {
+    state.techs = [...new Set(tasks.map(t => t.tech))].sort();
+  }
+
+  state.lastGood = new Date();
+  setStatus(true, "Updated " + state.lastGood.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  $("loadMsg").classList.add("hidden");
+  $("app").classList.remove("hidden");
+}
+async function refresh(){
+  if (DEMO) return;
+  try {
+    await loadLive();
+    if (!(state.view === "tech" && state.composing)) render();
+  } catch (e) {
+    console.error(e);
+    if (state.lastGood){
+      setStatus(false, "Connection issue — showing " + state.lastGood.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " data");
+      if (state.tasks.length) render();
+    } else {
+      setStatus(false, "Can't reach the sheet");
+      $("loadMsg").textContent = "Couldn't load data from the published sheet. Check that it's still published to the web (CLAUDE.md), then reload. Add ?demo=1 to the URL to preview with sample data.";
+    }
+  }
+}
+
+/* ---------- submit ---------- */
+async function postStatus(task, status, reason, note){
+  if (DEMO){
+    await new Promise(r => setTimeout(r, 300));
+    return { ok: true };
+  }
+  const res = await fetch(EXEC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },       /* simple request — avoids CORS preflight */
+    body: JSON.stringify({ row: task.row, tech: task.tech, status, reason, note }),
+  });
+  const data = await res.json();
+  if (!data.ok){
+    if (data.error === "row mismatch") throw new Error("mismatch");
+    throw new Error(data.error || "save failed");
+  }
+  return data;
+}
+async function submit(task, status, reason, note){
+  if (state.saving) return;
+  state.saving = true;
+  state.overrides[task.row] = { status, reason, note };
+  Object.assign(task, { status, reason, note });
+  state.composing = false;
+  render();
+  try {
+    await postStatus(task, status, reason, note);
+  } catch (e) {
+    delete state.overrides[task.row];
+    task.status = ""; task.reason = ""; task.note = "";
+    render();
+    if (e.message === "mismatch"){
+      alert("This task was just changed in the sheet. Reloading the latest list — please tap again.");
+      refresh();
+    } else {
+      alert("Couldn't save the update. Check your connection and try again.");
+    }
+  } finally {
+    state.saving = false;
+  }
+}
+
+/* ---------- routing ---------- */
+function route(){
+  const h = location.hash.replace(/^#\/?/, "");
+  state.view = h.startsWith("board") ? "board" : h.startsWith("kiosk") ? "kiosk" : "tech";
+  document.body.classList.toggle("kiosk", state.view === "kiosk");
+  document.querySelectorAll("nav a").forEach(a =>
+    a.classList.toggle("active", a.dataset.route === state.view));
+  render();
+}
+
+/* ---------- tech view ---------- */
+let searchQ = "";
+function renderTech(){
+  const app = $("app");
+  if (!state.me){
+    const q = searchQ.trim().toLowerCase();
+    const names = state.techs.filter(n => !q || n.toLowerCase().includes(q));
+    app.innerHTML = `
+      <div class="card">
+        <input class="search" id="nameSearch" type="search" placeholder="Type your name…" value="${esc(searchQ)}" autocomplete="off">
+        <div class="nameGrid">
+          ${names.map(n => `<button class="nameBtn" data-name="${esc(n)}">${esc(n)}</button>`).join("")}
+          ${names.length ? "" : `<div class="empty">No matching name — check the spelling with your executive.</div>`}
+        </div>
+      </div>`;
+    const inp = $("nameSearch");
+    inp.addEventListener("input", () => { searchQ = inp.value; renderTech(); inpFocus(); });
+    app.querySelectorAll(".nameBtn").forEach(b =>
+      b.addEventListener("click", () => {
+        state.me = b.dataset.name;
+        localStorage.setItem("wt-tech", state.me);
+        searchQ = "";
+        renderTech();
+      }));
+    return;
+  }
+
+  const today = dateStr(0);
+  const mine = state.tasks.filter(t => t.tech === state.me && t.date === today);
+  app.innerHTML = `
+    <div class="whoBar">
+      <div class="nm">${esc(state.me)}</div>
+      <button class="linkBtn" id="changeName">Not you? Change name</button>
+    </div>
+    ${mine.length ? mine.map(taskCard).join("") : `<div class="card empty">No tasks assigned today (${esc(dateLabel(today))}).</div>`}
+  `;
+  $("changeName").addEventListener("click", () => { state.me = ""; localStorage.removeItem("wt-tech"); renderTech(); });
+  wireTaskCards(app, mine);
+}
+function inpFocus(){
+  const inp = $("nameSearch");
+  if (inp){ inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+function taskCard(t, i){
+  const answered = t.status === "done" || t.status === "not done";
+  let body;
+  if (answered){
+    body = `
+      <div class="stLine">
+        ${t.status === "done"
+          ? `<span class="stBadge done">✓ Done</span>`
+          : `<span class="stBadge nd">✗ Not done <span class="stReason">— ${esc(t.reason)}${t.note ? " · " + esc(t.note) : ""}</span></span>`}
+        <button class="linkBtn" data-act="change" data-i="${i}">Change</button>
+      </div>`;
+  } else {
+    body = `
+      <div class="actions">
+        <button class="bigBtn btnDone" data-act="done" data-i="${i}">Done</button>
+        <button class="bigBtn btnND" data-act="nd" data-i="${i}">Not done</button>
+      </div>
+      <div class="ndForm hidden" data-form="${i}">
+        <div class="reasonRow">
+          ${REASONS.map(r => `<button class="reasonBtn" data-r="${esc(r)}" aria-pressed="false">${esc(r)}</button>`).join("")}
+        </div>
+        <input class="noteIn" type="text" maxlength="120" placeholder="Note (optional) — e.g. parts arriving Thursday">
+        <div class="confirmRow">
+          <button class="bigBtn btnND" data-act="confirm" data-i="${i}" disabled style="opacity:.5">Confirm not done</button>
+          <button class="cancelBtn" data-act="cancel" data-i="${i}">Cancel</button>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="taskCard" data-row="${t.row}">
+      <div class="site">${esc(t.site)}</div>
+      <div class="desc">${esc(t.task)}</div>
+      ${body}
+    </div>`;
+}
+function wireTaskCards(app, mine){
+  app.querySelectorAll("[data-act]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = +btn.dataset.i;
+      const t = mine[i];
+      const act = btn.dataset.act;
+      if (act === "done") submit(t, "done", "", "");
+      else if (act === "change"){ t.status = ""; t.reason = ""; t.note = ""; delete state.overrides[t.row]; renderTech(); }
+      else if (act === "nd"){
+        state.composing = true;
+        const form = app.querySelector(`[data-form="${i}"]`);
+        form.classList.remove("hidden");
+        btn.closest(".actions").classList.add("hidden");
+        form.querySelectorAll(".reasonBtn").forEach(rb =>
+          rb.addEventListener("click", () => {
+            form.querySelectorAll(".reasonBtn").forEach(x => x.setAttribute("aria-pressed", "false"));
+            rb.setAttribute("aria-pressed", "true");
+            const c = form.querySelector('[data-act="confirm"]');
+            c.disabled = false; c.style.opacity = "1";
+          }));
+        form.querySelector('[data-act="cancel"]').addEventListener("click", () => { state.composing = false; renderTech(); });
+        form.querySelector('[data-act="confirm"]').addEventListener("click", () => {
+          const picked = form.querySelector('.reasonBtn[aria-pressed="true"]');
+          if (!picked) return;
+          submit(t, "not done", picked.dataset.r, form.querySelector(".noteIn").value.trim());
+        });
+      }
+    });
+  });
+}
+
+/* ---------- board + kiosk ---------- */
+function boardTasks(){
+  const day = dateStr(state.view === "kiosk" ? 0 : state.boardOffset);
+  return { day, list: state.tasks.filter(t => t.date === day) };
+}
+function groupJobs(list){
+  const map = new Map();
+  for (const t of list){
+    const key = t.site + "\n" + t.task;
+    if (!map.has(key)) map.set(key, { site: t.site, task: t.task, techs: [] });
+    map.get(key).techs.push(t);
+  }
+  const jobs = [...map.values()];
+  for (const j of jobs){
+    j.techs.sort((a, b) => a.tech.localeCompare(b.tech));
+    j.nd = j.techs.filter(t => t.status === "not done").length;
+    j.pend = j.techs.filter(t => t.status !== "done" && t.status !== "not done").length;
+    j.done = j.techs.filter(t => t.status === "done").length;
+    j.problem = j.nd + j.pend > 0;
+  }
+  jobs.sort((a, b) => (b.problem - a.problem) || (b.nd - a.nd) || (b.pend - a.pend) || a.site.localeCompare(b.site));
+  return jobs;
+}
+function counts(list){
+  return {
+    done: list.filter(t => t.status === "done").length,
+    nd: list.filter(t => t.status === "not done").length,
+    pend: list.filter(t => t.status !== "done" && t.status !== "not done").length,
+  };
+}
+function boardHTML(){
+  const { day, list } = boardTasks();
+  const c = counts(list);
+  const f = state.view === "kiosk" ? "all" : state.filter;   /* kiosk always shows everything, problems first */
+  let jobs = groupJobs(list);
+  if (f === "problems") jobs = jobs.filter(j => j.problem);
+  else if (f === "pending") jobs = jobs.filter(j => j.pend > 0);
+  else if (f === "done") jobs = jobs.filter(j => !j.problem);
+
+  const chips = `
+    <div class="sumBar">
+      <button class="sumChip ${f === "all" ? "active" : ""}" data-f="all">All · ${list.length}</button>
+      <button class="sumChip c-nd ${f === "problems" ? "active" : ""}" data-f="problems">Problems · ${c.nd + c.pend}</button>
+      <button class="sumChip c-pend ${f === "pending" ? "active" : ""}" data-f="pending">Pending · ${c.pend}</button>
+      <button class="sumChip c-done ${f === "done" ? "active" : ""}" data-f="done">Done · ${c.done}</button>
+    </div>`;
+  const nav = state.view === "board" ? `
+    <div class="dayNav">
+      <button data-day="-1">← Prev</button>
+      <div class="dlabel">${esc(dateLabel(day))}${state.boardOffset === 0 ? " (today)" : ""}</div>
+      <button data-day="1">Next →</button>
+      <button data-day="0" ${state.boardOffset === 0 ? "disabled" : ""}>Today</button>
+    </div>` : "";
+  const jobCards = jobs.length ? jobs.map(j => `
+    <div class="jobCard ${j.problem ? "problem" : ""}">
+      <div class="jsite">${esc(j.site)}</div>
+      <div class="jdesc">${esc(j.task)}</div>
+      <div class="chipRow">
+        ${j.techs.map(t => `
+          <span class="tchip ${t.status === "done" ? "done" : t.status === "not done" ? "nd" : "pend"}">
+            ${esc(t.tech)}${t.status === "done" ? " ✓" : ""}
+            ${t.status === "not done" ? `<span class="rsn">${esc(t.reason)}${t.note ? " · " + esc(t.note) : ""}</span>` : ""}
+          </span>`).join("")}
+      </div>
+    </div>`).join("") : `<div class="card empty">No tasks ${state.view === "kiosk" ? "today" : "on this day"}.</div>`;
+
+  return { chips, nav, jobCards };
+}
+function renderBoard(){
+  const { chips, nav, jobCards } = boardHTML();
+  const app = $("app");
+  app.innerHTML = nav + chips + jobCards;
+  app.querySelectorAll("[data-f]").forEach(b =>
+    b.addEventListener("click", () => { state.filter = b.dataset.f; renderBoard(); }));
+  app.querySelectorAll("[data-day]").forEach(b =>
+    b.addEventListener("click", () => { state.boardOffset = b.dataset.day === "0" ? 0 : state.boardOffset + (+b.dataset.day); renderBoard(); }));
+}
+function renderKiosk(){
+  const { chips, jobCards } = boardHTML();
+  $("kTitle").textContent = "Work tracker — " + dateLabel(dateStr(0));
+  $("kApp").innerHTML = chips + jobCards;
+  $("kApp").querySelectorAll("[data-f]").forEach(b => b.style.cursor = "default");
+  tickClock();
+}
+function tickClock(){
+  if (state.view !== "kiosk") return;
+  $("kClock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ---------- render ---------- */
+function render(){
+  const kioskMode = state.view === "kiosk";
+  const noData = !DEMO && !state.lastGood;   /* keep the loading message up until first fetch */
+  $("app").classList.toggle("hidden", kioskMode || noData);
+  if (state.view === "tech") renderTech();
+  else if (state.view === "board") renderBoard();
+  else renderKiosk();
+}
+
+/* ---------- boot ---------- */
+window.addEventListener("hashchange", route);
+setInterval(tickClock, 1000);
+(function boot(){
+  route();
+  if (DEMO){ loadDemo(); return; }
+  if (!PUB_KEY){
+    setStatus(false, "Not set up yet");
+    $("loadMsg").innerHTML = "This app isn't connected to a Google Sheet yet — see the setup steps in CLAUDE.md.<br>Add <b>?demo=1</b> to the URL to preview it with sample data.";
+    return;
+  }
+  refresh();
+  setInterval(refresh, REFRESH_SECONDS * 1000);
+})();
+</script>
+</body>
+</html>
