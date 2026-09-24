@@ -135,3 +135,17 @@ Live at `https://<user>.github.io/work-tracker/` a minute or two after Pages is 
 - Exec wants a new column → add it after column H and it won't disturb the app;
   inserting columns before H shifts the fixed indexes in both `index.html`
   (`loadLive`) and `apps-script.gs` (`COL`) — update both.
+
+## Session log
+- 2026-09-24 — Added job-level Done: one tech's Done completes every `tasks`
+  row with the same date+site+task (fan-out server-side in `apps-script.gs`,
+  mirrored optimistically in `index.html`; shared tasks show a "Shared with…"
+  hint; fanned-out rows logged with note `auto: done via <tech>`). Not done
+  stays individual. Verified with a mocked-sheet `doPost` test (16 checks).
+  Commit `a23dd85`, pushed to Pages.
+  **Pending:** redeploy the Apps Script — paste the updated `apps-script.gs`
+  into the editor, Deploy → Manage deployments → Version: New version. Until
+  then the live script still marks only the tapping tech's row.
+  Also confirmed scaling: `log` is never read by the app (grows forever, fine);
+  `tasks` at ~30 rows/day ≈ 900/month — monthly housekeeping keeps reads light;
+  lag only starts in the tens of thousands of rows.
